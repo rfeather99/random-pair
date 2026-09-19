@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#161513" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Random Pair">
+<title>Random Pair</title>
+<meta name="description" content="2種類のリストからそれぞれ1つをランダムに選択する">
+<style>
+  :root {
+    --bg: #f6f5f1;
+    --surface: #ffffff;
+    --text: #1d1c1a;
+    --muted: #6d6a63;
+    --border: #dcd9d1;
+    --accent: #c2410c;
+    --accent-text: #ffffff;
+    --chip: #efede7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161513;
+      --surface: #201f1c;
+      --text: #ece9e2;
+      --muted: #9a968d;
+      --border: #35332e;
+      --accent: #f97316;
+      --accent-text: #1a1206;
+      --chip: #2b2925;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    -webkit-tap-highlight-color: transparent;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    line-height: 1.6;
+  }
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+    padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+             max(48px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  }
+  h1 {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin: 0 0 16px;
+  }
+  #result {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    min-height: clamp(180px, 38dvh, 360px);
+    padding: 24px 16px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 12px 32px;
+  }
+  .pair {
+    font-size: clamp(2rem, 9vw, 3.5rem);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .pair .sep {
+    font-size: 0.5em;
+    font-weight: 400;
+    color: var(--muted);
+    margin: 0 0.2em;
+  }
+  .placeholder { color: var(--muted); }
+  #draw {
+    display: block;
+    width: 100%;
+    margin: 16px 0 32px;
+    padding: 16px;
+    font: inherit;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--accent-text);
+    background: var(--accent);
+    border: 0;
+    border-radius: 12px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  #draw:active { transform: translateY(1px); }
+  #draw:disabled { opacity: 0.4; cursor: not-allowed; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  fieldset {
+    border: 0;
+    padding: 0;
+    margin: 0 0 24px;
+  }
+  label, legend {
+    display: block;
+    padding: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  input[type="text"], input[type="number"] {
+    width: 100%;
+    padding: 10px 12px;
+    font: inherit;
+    font-size: 1rem;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+    min-height: 28px;
+  }
+  .chip {
+    background: var(--chip);
+    border-radius: 6px;
+    padding: 2px 10px;
+    font-size: 0.875rem;
+  }
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .presets button {
+    font: inherit;
+    font-size: 0.875rem;
+    min-height: 36px;
+    touch-action: manipulation;
+    color: var(--text);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 14px;
+    cursor: pointer;
+  }
+  .presets button:hover { border-color: var(--accent); }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .hint {
+    font-size: 0.8125rem;
+    color: var(--muted);
+    margin: 0;
+  }
+  @media (hover: none) and (pointer: coarse) {
+    .kbd-hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>RANDOM PAIR</h1>
+
+  <div id="result" aria-live="polite"><span class="placeholder">タップして選択</span></div>
+  <button id="draw" type="button">選ぶ</button>
+
+  <fieldset>
+    <label for="listA">リスト1</label>
+    <input id="listA" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <div class="chips" id="chipsA"></div>
+  </fieldset>
+
+  <fieldset>
+    <label for="listB">リスト2</label>
+    <input id="listB" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <div class="chips" id="chipsB"></div>
+    <div class="presets" id="presets"></div>
+  </fieldset>
+
+  <fieldset class="row">
+    <div>
+      <label for="count">選ぶ組数</label>
+      <input id="count" type="number" min="1" max="20" inputmode="numeric">
+    </div>
+    <div>
+      <label for="sep">つなぎ文字</label>
+      <input id="sep" type="text" autocomplete="off" autocapitalize="off" autocorrect="off">
+    </div>
+  </fieldset>
+
+  <p class="hint">カンマか空白で区切ると項目ごとに、区切りがなければ1文字ずつに分割します。結果の枠をタップしても選べます。<span class="kbd-hint">スペースキーでも選べます。</span></p>
+</main>
+
+<script>
+(() => {
+  const STORAGE_KEY = 'random-pair:v1';
+  const DEFAULTS = { listA: 'ABCDEFG', listB: 'CAGED', count: 2, sep: 'の' };
+  const PRESETS = [
+    { label: 'CAGED', value: 'CAGED' },
+    { label: 'R35 / 35R / 5R3', value: 'R35, 35R, 5R3' },
+  ];
+
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    listA: $('listA'), listB: $('listB'), count: $('count'), sep: $('sep'),
+    chipsA: $('chipsA'), chipsB: $('chipsB'), presets: $('presets'),
+    result: $('result'), draw: $('draw'),
+  };
+
+  // 区切り文字があれば項目ごと、なければ1文字ずつ
+  function parseList(text) {
+    const trimmed = text.trim();
+    if (!trimmed) return [];
+    if (/[,、\s]/.test(trimmed)) return trimmed.split(/[,、\s]+/).filter(Boolean);
+    return Array.from(trimmed);
+  }
+
+  function loadState() {
+    try {
+      return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') };
+    } catch {
+      return { ...DEFAULTS };
+    }
+  }
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        listA: els.listA.value, listB: els.listB.value,
+        count: getCount(), sep: els.sep.value,
+      }));
+    } catch { /* 保存できなくても動作には影響しない */ }
+  }
+
+  function getCount() {
+    const n = parseInt(els.count.value, 10);
+    return Number.isFinite(n) ? Math.min(20, Math.max(1, n)) : DEFAULTS.count;
+  }
+
+  function renderChips(container, items) {
+    container.replaceChildren(...items.map((item) => {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = item;
+      return chip;
+    }));
+  }
+
+  function refresh() {
+    const a = parseList(els.listA.value);
+    const b = parseList(els.listB.value);
+    renderChips(els.chipsA, a);
+    renderChips(els.chipsB, b);
+    els.draw.disabled = a.length === 0 || b.length === 0;
+    saveState();
+  }
+
+  const pick = (n) => Math.floor(Math.random() * n);
+
+  // 組み合わせ総数が足りる間は同じ組を重複させない
+  function drawPairs(a, b, count) {
+    const unique = count <= a.length * b.length;
+    const seen = new Set();
+    const pairs = [];
+    while (pairs.length < count) {
+      const i = pick(a.length), j = pick(b.length);
+      const key = i + ':' + j;
+      if (unique && seen.has(key)) continue;
+      seen.add(key);
+      pairs.push([a[i], b[j]]);
+    }
+    return pairs;
+  }
+
+  function renderPairs(pairs) {
+    const sep = els.sep.value;
+    els.result.replaceChildren(...pairs.map(([x, y]) => {
+      const pair = document.createElement('span');
+      pair.className = 'pair';
+      const sepEl = document.createElement('span');
+      sepEl.className = 'sep';
+      sepEl.textContent = sep;
+      pair.append(x, sepEl, y);
+      return pair;
+    }));
+  }
+
+  function draw() {
+    const a = parseList(els.listA.value);
+    const b = parseList(els.listB.value);
+    if (!a.length || !b.length) return;
+    // 入力中ならソフトウェアキーボードを閉じて結果を見せる
+    if (document.activeElement instanceof HTMLInputElement) document.activeElement.blur();
+    renderPairs(drawPairs(a, b, getCount()));
+  }
+
+  PRESETS.forEach(({ label, value }) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = label;
+    btn.addEventListener('click', () => {
+      els.listB.value = value;
+      refresh();
+    });
+    els.presets.append(btn);
+  });
+
+  const state = loadState();
+  els.listA.value = state.listA;
+  els.listB.value = state.listB;
+  els.count.value = state.count;
+  els.sep.value = state.sep;
+
+  [els.listA, els.listB, els.count, els.sep].forEach((el) => el.addEventListener('input', refresh));
+  els.draw.addEventListener('click', draw);
+  els.result.addEventListener('click', draw);
+  document.addEventListener('keydown', (e) => {
+    if (e.code !== 'Space' || e.repeat) return;
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLButtonElement) return;
+    e.preventDefault();
+    draw();
+  });
+
+  refresh();
+})();
+</script>
+</body>
+</html>
