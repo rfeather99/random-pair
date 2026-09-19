@@ -186,13 +186,14 @@
     <label for="listA">リスト1</label>
     <input id="listA" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
     <div class="chips" id="chipsA"></div>
+    <div class="presets" id="presetsA"></div>
   </fieldset>
 
   <fieldset>
     <label for="listB">リスト2</label>
     <input id="listB" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
     <div class="chips" id="chipsB"></div>
-    <div class="presets" id="presets"></div>
+    <div class="presets" id="presetsB"></div>
   </fieldset>
 
   <fieldset class="row">
@@ -216,15 +217,21 @@
   const DEFAULTS = { listA: 'A, B, C, D, E, F, G', listB: 'C, A, G, E, D', count: 1, sep: ' - ' };
   // URLクエリのキー。クエリ込みでブックマークすると同じ設定で開ける
   const QUERY_KEYS = { listA: 'a', listB: 'b', count: 'n', sep: 'sep' };
-  const PRESETS = [
-    { label: 'CAGED', value: 'C, A, G, E, D' },
-    { label: 'R35 / 35R / 5R3', value: 'R35, 35R, 5R3' },
-  ];
+  const PRESETS = {
+    listA: [
+      { label: 'A–G', value: 'A, B, C, D, E, F, G' },
+    ],
+    listB: [
+      { label: 'CAGED', value: 'C, A, G, E, D' },
+      { label: 'R35 / 35R / 5R3', value: 'R35, 35R, 5R3' },
+    ],
+  };
 
   const $ = (id) => document.getElementById(id);
   const els = {
     listA: $('listA'), listB: $('listB'), count: $('count'), sep: $('sep'),
-    chipsA: $('chipsA'), chipsB: $('chipsB'), presets: $('presets'),
+    chipsA: $('chipsA'), chipsB: $('chipsB'),
+    presetsA: $('presetsA'), presetsB: $('presetsB'),
     result: $('result'), draw: $('draw'),
   };
 
@@ -349,16 +356,20 @@
     renderPairs(drawPairs(a, b, getCount()));
   }
 
-  PRESETS.forEach(({ label, value }) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = label;
-    btn.addEventListener('click', () => {
-      els.listB.value = value;
-      refresh();
+  function renderPresets(container, input, presets) {
+    presets.forEach(({ label, value }) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = label;
+      btn.addEventListener('click', () => {
+        input.value = value;
+        refresh();
+      });
+      container.append(btn);
     });
-    els.presets.append(btn);
-  });
+  }
+  renderPresets(els.presetsA, els.listA, PRESETS.listA);
+  renderPresets(els.presetsB, els.listB, PRESETS.listB);
 
   const state = loadState();
   els.listA.value = state.listA;
