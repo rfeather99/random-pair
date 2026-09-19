@@ -206,13 +206,15 @@
     </div>
   </fieldset>
 
-  <p class="hint">カンマか空白で区切ると項目ごとに、区切りがなければ1文字ずつに分割します。結果の枠をタップしても選べます。<span class="kbd-hint">スペースキーでも選べます。</span></p>
+  <p class="hint">カンマか空白で区切ると項目ごとに、区切りがなければ1文字ずつに分割します。設定はURLに反映されるので、ブックマークすれば同じ設定で開けます。結果の枠をタップしても選べます。<span class="kbd-hint">スペースキーでも選べます。</span></p>
 </main>
 
 <script>
 (() => {
-  const STORAGE_KEY = 'random-pair:v1';
-  const DEFAULTS = { listA: 'ABCDEFG', listB: 'CAGED', count: 2, sep: 'の' };
+  const STORAGE_KEY = 'random-pair:v2';
+  const DEFAULTS = { listA: 'A, B, C, D, E, F, G', listB: 'CAGED', count: 2, sep: 'の' };
+  // URLクエリのキー。クエリ込みでブックマークすると同じ設定で開ける
+  const QUERY_KEYS = { listA: 'a', listB: 'b', count: 'n', sep: 'sep' };
   const PRESETS = [
     { label: 'CAGED', value: 'CAGED' },
     { label: 'R35 / 35R / 5R3', value: 'R35, 35R, 5R3' },
@@ -233,21 +235,53 @@
     return Array.from(trimmed);
   }
 
-  function loadState() {
+  function loadStored() {
     try {
-      return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') };
+      localStorage.removeItem('random-pair:v1');
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     } catch {
-      return { ...DEFAULTS };
+      return {};
     }
+  }
+
+  function loadQuery() {
+    const params = new URLSearchParams(location.search);
+    const state = {};
+    for (const [key, param] of Object.entries(QUERY_KEYS)) {
+      if (params.has(param)) state[key] = params.get(param);
+    }
+    return state;
+  }
+
+  // クエリ > 前回の保存内容 > 既定値 の順で優先
+  function loadState() {
+    return { ...DEFAULTS, ...loadStored(), ...loadQuery() };
+  }
+
+  function currentState() {
+    return {
+      listA: els.listA.value, listB: els.listB.value,
+      count: getCount(), sep: els.sep.value,
+    };
   }
 
   function saveState() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        listA: els.listA.value, listB: els.listB.value,
-        count: getCount(), sep: els.sep.value,
-      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(currentState()));
     } catch { /* 保存できなくても動作には影響しない */ }
+  }
+
+  // Safari は replaceState の連続呼び出しを制限するので入力が落ち着いてから反映する
+  let urlTimer;
+  function syncUrl() {
+    clearTimeout(urlTimer);
+    urlTimer = setTimeout(() => {
+      const params = new URLSearchParams(location.search);
+      for (const [key, value] of Object.entries(currentState())) params.set(QUERY_KEYS[key], value);
+      try {
+        history.replaceState(null, '', '?' + params + location.hash);
+      } catch { /* URLに反映できなくても動作には影響しない */ }
+    }, 300);
   }
 
   function getCount() {
@@ -271,6 +305,7 @@
     renderChips(els.chipsB, b);
     els.draw.disabled = a.length === 0 || b.length === 0;
     saveState();
+    syncUrl();
   }
 
   const pick = (n) => Math.floor(Math.random() * n);
